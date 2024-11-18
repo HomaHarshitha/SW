@@ -1,0 +1,411 @@
+\let\negmedspace\undefined
+\let\negthickspace\undefined
+\documentclass[journal]{IEEEtran}
+\usepackage[a5paper, margin=10mm, onecolumn]{geometry}
+%\usepackage{lmodern} % Ensure lmodern is loaded for pdflatex
+\usepackage{tfrupee} % Include tfrupee package
+
+\setlength{\headheight}{1cm} % Set the height of the header box
+\setlength{\headsep}{0mm}     % Set the distance between the header box and the top of the text
+
+\usepackage{gvv-book}
+\usepackage{gvv}
+\usepackage{cite}
+\usepackage{amsmath,amssymb,amsfonts,amsthm}
+\usepackage{algorithmic}
+\usepackage{graphicx}
+\usepackage{textcomp}
+\usepackage{xcolor}
+\usepackage{txfonts}
+\usepackage{listings}
+\usepackage{enumitem}
+\usepackage{mathtools}
+\usepackage{gensymb}
+\usepackage{comment}
+\usepackage[breaklinks=true]{hyperref}
+\usepackage{tkz-euclide} 
+\usepackage{listings}
+% \usepackage{gvv}                                        
+\def\inputGnumericTable{}                                 
+\usepackage[latin1]{inputenc}                                
+\usepackage{color}                                            
+\usepackage{array}                                            
+\usepackage{longtable}                                       
+\usepackage{calc}  
+\usepackage{amsmath,amssymb}
+
+\usepackage{multicol}                                         
+\usepackage{hhline}                                           
+\usepackage{ifthen}                                           
+\usepackage{lscape}
+\usepackage{listings}
+
+
+
+\begin{document}
+
+\bibliographystyle{IEEEtran}
+
+\title{
+%	\logo{
+MATRIX THEORY
+
+\large{EE1030}
+
+SOFTWARE ASSIGNMENT
+%	}
+}
+\author{Homa Harshitha Vuddanti
+
+(EE24BTECH11062)
+}	
+
+\maketitle
+
+\bigskip
+
+\renewcommand{\thefigure}{\theenumi}
+\renewcommand{\thetable}{\theenumi}
+\textbf{Aim} : To write a code using C/rust/python, to compute eigenvalues of a given matrix, using a suitable algorithm.\\
+
+\textbf{Algorithms chosen}: \begin{enumerate}
+    \item QR algorithm
+    \item Power iteration with deflation\\
+\end{enumerate}
+
+\textbf{Chosen language}: C\\
+
+\begin{enumerate}
+    \item \textbf{QR algorithm} : The QR algorithm uses the idea of QR decomposition to iteratively solve for eigenvalues.\\
+    
+    \textbf{QR decomposition:}\\
+    We are supposed to write the given matrix A\brak{n x n} as the product of two matrices, Q and R, such that Q is an orthogonal matrix and R is an upper triangular matrix.\\
+    We can use \textbf{Gram-Schmidt process} for calculating Q and R, \\
+    Say the columns of A are $a_1,a_2,\dots, a_n$ and the columns of Q are $q_1,q_2,\dots,q_n$, \\
+    then $q_1$ is the normalized version of $a_1$, the rest of $q_2$ are obtained by subtracting $a_2$ from projection of $a_2$ and $q_1$, and normalizing it. \\This goes on till $q_n$.\\
+    After we obtain Q, we can get the matrix R by \\
+    \begin{align}
+        R=Q^\top A
+    \end{align}
+    
+    Now for QR algorithm, we first write $A=QR$, and then a matrix $A_1=RQ$, we can now consider $A_1$ to be our new matrix A and keep doing this till it converges to an upper triangular matrix, whose diagonal elements will give us the eigenvalues.\\
+    
+    \begin{enumerate}
+        \item \textbf{C code on computing eigenvalues using QR algorithm} :
+        \begin{lstlisting}
+#include <stdio.h>
+#include <stdlib.h>
+#include <math.h>
+
+void qr_decomposition(double** A,double** Q,double** R,int n){
+    for(int j=0;j<n;j++){
+        for(int i=0;i<n;i++){
+          //here we are copying jth column of A to jth column of Q.
+            Q[i][j]=A[i][j];
+        }
+        for(int k= 0;k<j;k++){
+            R[k][j]=0;
+            for(int i=0;i<n;i++){
+              //projection of Q on A
+                R[k][j]+=Q[i][k]*A[i][j];
+            }
+            for(int i=0;i<n;i++){
+              //subtracting vector from projection to get orthogonal
+                Q[i][j]-=R[k][j]*Q[i][k];
+            }
+        }
+        // making Q as the orthogonal vector
+        R[j][j]=0;
+        for(int i=0;i<n;i++){
+            R[j][j]+=Q[i][j]*Q[i][j];
+        }
+        R[j][j] = sqrt(R[j][j]);
+        for(int i=0;i<n;i++){
+          //making it unit vector.
+            Q[i][j]=Q[i][j]/R[j][j];
+        }
+    }
+}
+
+void qr_algorithm(double** A,int n) {
+    double** Q=(double**)malloc(n*sizeof(double*));
+    double** R =(double**)malloc(n*sizeof(double*));
+    for(int i=0;i<n;i++) {
+        Q[i]=(double*)malloc(n*sizeof(double));
+        R[i]=(double*)malloc(n*sizeof(double));
+    }
+
+    for(int iter=0;iter<1000;iter++) {
+      // taking maximum iterations
+        qr_decomposition(A,Q,R,n);
+        //temp for storing A_1
+        double** temp =(double**)malloc(n*sizeof(double*));
+        for(int i=0;i<n;i++){
+            temp[i]=(double*)malloc(n*sizeof(double));
+        }
+
+        for(int i=0;i<n;i++) {
+            for (int j=0;j<n;j++) {
+                temp[i][j]=0;
+                for (int k=0;k<n;k++) {
+                  //temp=RQ
+                    temp[i][j]+=R[i][k]*Q[k][j];
+                }
+            }
+        }
+
+        for (int i=0;i<n; i++) {
+            for (int j=0;j<n;j++) {
+             // A_1=temp=RQ
+                A[i][j]=temp[i][j];
+            }
+        }
+
+        // Free temp
+        for (int i=0;i<n;i++) {
+            free(temp[i]);
+        }
+        free(temp);
+    }
+
+    // Free Q,R
+    for (int i=0;i<n;i++) {
+        free(Q[i]);
+        free(R[i]);
+    }
+    free(Q);
+    free(R);
+}
+
+int main() {
+    int n;
+    scanf("%d",&n);
+    double** A=(double**)malloc(n * sizeof(double*));
+    for(int i=0;i<n;i++) {
+        A[i]=(double*)malloc(n * sizeof(double));
+    }
+    for(int i=0;i<n;i++){
+        for (int j=0;j<n;j++){
+            scanf("%lf",&A[i][j]);
+        }
+    }
+    qr_algorithm(A,n);
+    for(int i=0;i<n;i++){
+        printf("%lf\n",A[i][i]); // taking diagonal of A for eigen values
+    }
+
+    // Free 
+    for(int i=0;i<n;i++){
+        free(A[i]);
+    }
+    free(A);
+
+    return 0;
+}
+\end{lstlisting}
+     \item \textbf{Example:}
+     Input:\\
+     2\\
+     4 1\\
+     2 3\\
+     Output:\\
+     5.000000\\
+     2.000000\\     
+     Which is the same as expected values.\\
+     
+     \item \textbf{Pros and cons:} It gives us all the eigenvalues for a non-symmetric matrix as well and handles closely spaced eigenvalues, however, it can be computationally expensive. \\
+     \item \textbf{Time complexity:} \\
+     qr\_decomposition: $O\brak{n^2}$\\
+     matrix multiplication: $O\brak{n^3}$
+     qr\_algorithm: $O\brak{n^3}$ for each iteration.\\
+     Overall : $O\brak{1000*n^3}$ as qr\_algorithm dominates.
+    \end{enumerate}
+\item \textbf{Power iteration with deflation :}\\
+\begin{enumerate}
+    \item \textbf{Power iteration:} We start with a random vector $v$ and we calculate  \begin{align}
+        \lambda=\frac{v^\top Av}{v^\top v}
+    \end{align}.\\
+    This gives an estimation of eigenvalue. We then normalize new vector $Av$. We repeat this until the eigenvalue reaches a stable value. This will give us $\lambda _1$ which is the dominant eigenvalue. \\
+
+    \textbf{Deflation :} We need to now remove the dominant value to calculate the next eigenvalue. We do this using deflation. We take new \begin{align}
+        A_{deflated}=A-\lambda _1 v_1 v_1^\top
+    \end{align}. This makes us left with one less eigenvalue. We now repeat power iteration with $A_{deflated}.$\\
+    
+    \item \textbf{C code for calculating eigenvalues using Power iteration with deflation:} 
+    \begin{lstlisting}
+#include <stdio.h>
+#include <stdlib.h>
+#include <math.h>
+
+//dot product function
+double dot_product(double *a,double *b,int n){
+    double result=0;
+    for(int i=0;i<n;i++){
+        result+=a[i]*b[i];
+    }
+    return result;
+}
+
+//norm
+void norm(double *a,int n) {
+    double norm=0.0;
+    for(int i=0;i<n;i++){
+        norm+=a[i]*a[i];
+    }
+    norm=sqrt(norm);
+    for(int i=0;i<n;i++){
+        a[i]/=norm;
+    }
+}
+
+//function to do deflation(doing A-lambda v v^T)
+void deflate_matrix(double *A,int n,double lambda,double *v) {
+    for(int i=0;i<n;i++){
+        for(int j=0;j<n;j++){
+            A[i*n+j]-=lambda*v[i]*v[j];
+        }
+    }
+}
+
+//to find dominant eigenvalue
+double dominant_eigenvalue(double *A,int n,double *v) {
+    double *Av=(double *)malloc(n*sizeof(double));
+    double d=0,d_old=0;
+
+    //taking v as a random vector
+    srand(42);
+    for(int i=0;i<n;i++){
+        v[i]=rand()/(double)RAND_MAX;
+    }
+    norm(v,n);
+
+    //power iteration
+    for(int iter=0;iter<1000;iter++){
+        //Av
+        for(int i=0;i<n;i++){
+            Av[i]=0;
+            for(int j=0;j<n;j++){
+                Av[i]+=A[i*n+j]*v[j];
+            }
+        }
+        d_old=d;
+        d=dot_product(v,Av,n);
+        norm(Av,n);
+        //making v new=Av
+        for(int i=0;i<n;i++){
+            v[i]=Av[i];
+        }
+
+        //convergence check
+        if(fabs(d-d_old)<1e-6){
+            break;
+        }
+    }
+
+    free(Av);
+    return d;
+}
+
+//finding eigenvalues
+void eigenvalues(double *A, int n, double *lambdas) {
+    double *v=(double *)malloc(n*sizeof(double));
+    double *A_copy=(double *)malloc(n*n*sizeof(double));
+    //making copy of A
+    for(int i=0;i<n*n;i++){
+        A_copy[i]=A[i];
+    }
+    //freeing dominant eigenvalue
+    for(int i=0;i<n;i++){
+        lambdas[i]=dominant_eigenvalue(A_copy,n,v);
+        deflate_matrix(A_copy,n,lambdas[i],v);
+    }
+
+    free(v);
+    free(A_copy);
+}
+int main() {
+    int n;
+    scanf("%d",&n);
+    double *A= (double *)malloc(n*n*sizeof(double));
+    double *lambdas=(double *)malloc(n*sizeof(double));
+    for(int i=0;i<n;i++){
+        for(int j=0;j<n;j++){
+            scanf("%lf",&A[i*n+j]);
+        }
+    }
+
+    //getting eigenvalues
+    eigenvalues(A,n,lambdas);
+    for (int i = 0; i < n; i++) {
+        printf("%f\n", lambdas[i]);
+    }
+
+    //free
+    free(A);
+    free(lambdas);
+
+    return 0;
+}
+    \end{lstlisting}
+    \item \textbf{Example :}\\
+    Input: \\
+    3\\
+    6 2 1\\
+    2 3 1\\
+    1 1 1\\
+    Output:\\
+    7.287992\\
+    2.133074\\
+    0.578933\\
+    Which are close to the actual eigenvalues.\\
+    
+
+     \item \textbf{Pros and cons:} It is efficient for large matrices, finds multiple eigenvalues. However, it does not work well with non-symmetric values.
+    \item \textbf{Time complexity:} \\
+    power iteration i.e, dominant\_eigenvalue function:\\
+    Matrix multiplication: $0\brak{n}$\\
+    Normalization : $O\brak{n}$\\
+    Convergence : $O\brak{n}$\\
+    for this function, overall : $O\brak{max\_iter*n^2}$\\
+    deflate\_matrix function : $O\brak{n^2}$\\
+    Total time complexity: $O\brak{1000*n^3}$
+\end{enumerate}
+\end{enumerate}
+\textbf{Comparing the algorithms:}\\
+\begin{enumerate}
+    \item For an input :\\
+    3\\
+    1 0 0\\
+    0 2 0\\
+    0 0 3\\
+    The QR algorithm code gives an output of \\
+    1.000000\\2.000000\\3.000000\\ as expected, However, the power iteration with deflation gives\\ 2.999999\\ 2.000000 \\ 1.000000\\ Therefore, QR algorithm is accurate for small matrices. 
+    \item 3\\
+    1 1 0\\
+     0 1 0\\
+     0 0 2\\
+     Since it is non symmetric matrix, QR algorithm works best, it gives\\ 1\\1\\2\\ accurately, whereas Power iteration gives \\
+    2.000000\\
+    1.001003\\
+    0.998997\\
+    \item Time taken:(if we add time.h and use clock())\\
+    For an example input :\\
+4\\
+6 3 1 2\\
+3 8 5 1\\
+1 5 9 4\\
+2 1 4 7\\
+QR algorithm takes: 0.001191 seconds\\
+Power iteration with deflation takes: 0.000013 seconds.\\
+Evidently, Power iteration takes much less time. One reason for this is that due to deflation, Power iteration code reduces complexity of matrix after each iteration.
+\end{enumerate}
+\textbf{Conclusion :}\\
+QR algorithm is more accurate for all general matrices, However it is expensive to compute, and works best for small sized matrices. Power iteration with deflation takes much less time compared to QR algorithm, but is not accurate enough for general matrices. It is much less complex.\\
+Hence, I would choose QR algorithm as it is more accurate in giving eigenvalues for all general matrices even though it takes more amount of time.\\
+
+\end{document}
+
+
+
+
+
